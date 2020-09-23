@@ -1,29 +1,39 @@
+localStorage.clear();
 window.addEventListener("load", function OnWindowLoaded() {
   let signs = [
     "1",
     "2",
     "3",
     "+",
+    "sin",
+    "cos",
     "4",
     "5",
     "6",
     "-",
+    "tg",
+    "ctg",
     "7",
     "8",
     "9",
     "/",
-    "0",
-    "=",
-    "*",
-    "c",
-    "%",
+    "Rad",
+
     ".",
+    "0",
+    "!",
+    "*",
+    "^",
+    "%",
+    "c",
+    "=",
+    "последние действия",
   ];
 
   let calc = document.getElementById("calc");
 
   var textArea = document.getElementById("inputVal");
-
+  let massForStorage = [];
   signs.forEach(function (sign) {
     let signElement = document.createElement("div");
     signElement.className = "btn";
@@ -31,71 +41,113 @@ window.addEventListener("load", function OnWindowLoaded() {
     calc.appendChild(signElement);
   });
 
-  document.querySelectorAll("#calc-wrap .btn").forEach(function (button) {
+  document.querySelectorAll("#calc .btn").forEach(function (button) {
     button.addEventListener("click", onButtonClick);
   });
+  function storage(calc, answer) {
+    let stringForMassStorage = "";
+    for (let i = 0; i < calc.length; i++) {
+      stringForMassStorage += calc[i];
+    }
+    stringForMassStorage += "=";
+    stringForMassStorage += answer;
+    if (massForStorage.length == 3) {
+      massForStorage.shift();
+      massForStorage.push(stringForMassStorage);
+    } else {
+      massForStorage.push(stringForMassStorage);
+    }
+    localStorage.setItem("answers", massForStorage);
+  }
   function stringText(str) {
-    let massNum = [];
+    let massEnd = [];
     let countN = 0,
       sum = "";
     for (let i = 0; i < str.length; i++) {
       if (
+        (str[i] === "s" && str[i + 1] === "i" && str[i + 2] === "n") ||
+        (str[i] === "c" && str[i + 1] === "o" && str[i + 2] === "s") ||
+        (str[i] === "c" && str[i + 1] === "t" && str[i + 2] === "g")
+      ) {
+        if (sum !== "") {
+          massEnd.push(parseFloat(sum));
+        }
+        massEnd.push(str[i] + str[i + 1] + str[i + 2]);
+        i = i + 2;
+        sum = "";
+      } else if (str[i] === "t" && str[i + 1] === "g") {
+        if (sum !== "") {
+          massEnd.push(parseFloat(sum));
+        }
+        massEnd.push(str[i] + str[i + 1]);
+        i = i + 1;
+        sum = "";
+      } else if (
         str[i] === "+" ||
         str[i] === "-" ||
         str[i] === "*" ||
         str[i] === "/" ||
-        str[i] === "%"
+        str[i] === "%" ||
+        str[i] === "!" ||
+        str[i] === "^"
       ) {
-        massNum[countN] = parseFloat(sum);
-        countN++;
+        if (sum == "") {
+          massEnd.push(str[i]);
+        } else {
+          massEnd.push(parseFloat(sum));
+          massEnd.push(str[i]);
+        }
+
         sum = "";
       } else {
         sum += str[i];
       }
-      if (i == str.length - 1) {
-        massNum[countN] = parseFloat(sum);
+      if (i == str.length - 1 && sum != "") {
+        massEnd.push(parseFloat(sum));
       }
     }
-    countN = 0;
-    let massMark = [],
-      massEnd = [];
-    for (let i = 0; i < str.length; i++) {
-      if (
-        str[i] === "+" ||
-        str[i] === "-" ||
-        str[i] === "*" ||
-        str[i] === "/" ||
-        str[i] === "%"
-      ) {
-        massMark[count] = str[i];
-        count++;
-      }
-    }
-    count = 0;
-    if (massMark.length == massNum.length) {
-      for (let i = 0; i < str.length; i++) {
-        massEnd.push(massMark[i]);
-        massEnd.push(parseFloat(massNum[i]));
-      }
-    } else {
-      for (let i = 0; i < massNum.length; i++) {
-        massEnd.push(parseFloat(massNum[i]));
-        if (i < massNum.length - 1) {
-          massEnd.push(massMark[i]);
-        }
-      }
-    }
+
     return massEnd;
   }
   function onButtonClick(e) {
     if (e.target.innerHTML === "c") {
       textArea.innerHTML = "0";
+    } else if (
+      e.currentTarget.innerHTML === "Rad" ||
+      e.currentTarget.innerHTML === "Deg"
+    ) {
+      console.log(e);
+      if (e.target.innerHTML === "Rad") {
+        e.target.innerHTML = "Deg";
+        e.toElement.id = "rad";
+      } else {
+        e.target.innerHTML = "Rad";
+        e.toElement.id = "deg";
+      }
+    } else if (e.target.innerHTML === "последние действия") {
+      let textAnswer = document.getElementById("outAnswers");
+      textAnswer.innerHTML = "";
+      if (localStorage.getItem("answers")) {
+        massForStorage = localStorage.getItem("answers").split(",");
+        for (let i = 0; i < 3; i++) {
+          if (massForStorage[i])
+            textAnswer.innerHTML += massForStorage[i] + "\n";
+        }
+      } else {
+        alert("Действий не проводилось");
+      }
     } else if (e.target.innerHTML === "=") {
       textArea = document.getElementById("inputVal");
       let str = textArea.innerHTML;
       let mass = stringText(str);
-
-      textArea.innerHTML = calculate(mass);
+      let radOrDeg;
+      if (document.getElementById("rad")) {
+        radOrDeg = true;
+      } else {
+        radOrDeg = false;
+      }
+      textArea.innerHTML = calculate(mass, radOrDeg);
+      storage(mass, textArea.innerHTML);
     } else if (textArea.innerHTML === "0") {
       if (e.target.innerHTML === ".") {
         textArea.innerHTML += e.target.innerHTML;
@@ -106,26 +158,60 @@ window.addEventListener("load", function OnWindowLoaded() {
       textArea.innerHTML += e.target.innerHTML;
     }
   }
-  var count = 0;
 
-  function calculate(calc) {
+  function factorial(n) {
+    return n != 1 ? n * factorial(n - 1) : 1;
+  }
+  function calculate(calc, radOrDeg) {
     var ops = [
+        { "!": (a) => factorial(a) },
+        { "^": (a, b) => Math.pow(a, b) },
+        {
+          sin: (a) => (radOrDeg ? Math.sin(a) : Math.sin((a * Math.PI) / 180)),
+          cos: (a) => (radOrDeg ? Math.cos(a) : Math.cos((a * Math.PI) / 180)),
+          tg: (a) => (radOrDeg ? Math.tan(a) : Math.tan((a * Math.PI) / 180)),
+          ctg: (a) =>
+            radOrDeg ? Math.tanh(a) : Math.tanh((a * Math.PI) / 180),
+        },
         { "%": (a, b) => a % b },
-        { "*": (a, b) => a * b, "/": (a, b) => a / b },
+        {
+          "*": (a, b) => a * b,
+          "/": (a, b) => (b != 0 ? a / b : alert("Деление на ноль")),
+        },
         { "+": (a, b) => a + b, "-": (a, b) => a - b },
       ],
       newCalc = [],
-      currentOp;
-
+      currentOp,
+      currentOp2,
+      currentOp3;
+    var count = 0;
+    if (calc[0] == "-") {
+      calc[1] *= -1;
+      calc.shift();
+    } else if (calc[0] == "+") {
+      calc[1] *= 1;
+      calc.shift();
+    }
     for (var i = 0; i < ops.length; i++) {
       for (var j = 0; j < calc.length; j++) {
-        if (calc[0] == "-" && count == 0) {
-          calc[1] *= -1;
-          j++;
-          count++;
-        }
-
-        if (ops[i][calc[j]]) {
+        if (ops[i][calc[j + 1]] && ops[i]["!"]) {
+          currentOp3 = ops[i][calc[j + 1]];
+        } else if (currentOp3) {
+          newCalc[newCalc.length] = currentOp3(parseFloat(calc[j - 1]));
+          currentOp3 = null;
+        } else if (
+          ops[i][calc[j]] &&
+          (ops[i].sin || ops[i].cos || ops[i].tg || ops[i].ctg)
+        ) {
+          if (calc[j + 1]) {
+            currentOp2 = ops[i][calc[j]];
+          } else {
+            alert("Неверный ввод");
+          }
+        } else if (currentOp2) {
+          newCalc[newCalc.length] = currentOp2(parseFloat(calc[j]));
+          currentOp2 = null;
+        } else if (ops[i][calc[j]]) {
           currentOp = ops[i][calc[j]];
         } else if (currentOp) {
           newCalc[newCalc.length - 1] = currentOp(
@@ -141,14 +227,14 @@ window.addEventListener("load", function OnWindowLoaded() {
       newCalc = [];
     }
 
-    if (calc.length > 1) {
-      console.log("Error: unable to resolve calculation");
+    if (calc.length > 1 || calc.length < 0) {
+      alert("Проверте вводимые данные");
       return calc;
     } else {
-      if (calc[0] % 1 > 0 || calc[0] < 0) {
-        return calc[0].toFixed(1);
+      if (parseFloat(calc[0])) {
+        return parseFloat(calc[0].toFixed(3));
       } else {
-        return calc[0];
+        return 0;
       }
     }
   }
